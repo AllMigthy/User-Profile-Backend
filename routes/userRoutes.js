@@ -16,6 +16,10 @@ const {
   addCompany,
   removeCompany,
   updateCompany,
+  addSocialLink,
+  updateSocialLink,
+  removeSocialLink,
+  getSocialLinks
 } = require("../controllers/userController");
 const router = express.Router();
 
@@ -37,5 +41,9 @@ router
   .patch("/:id/education/:educationId", updateEducation)
   .post("/:id/companies", addCompany)
   .delete("/:id/companies/:companyId", removeCompany)
-  .patch("/:id/companies/:companyId", updateCompany);
+  .patch("/:id/companies/:companyId", updateCompany)
+  .post("/:id/socialLinks", addSocialLink)
+  .patch("/:id/socialLinks/:linkId", updateSocialLink)
+  .delete("/:id/socialLinks/:linkId", removeSocialLink)
+  .get('/:id/socialLinks', getSocialLinks);
 exports.router = router;
