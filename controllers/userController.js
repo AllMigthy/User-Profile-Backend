@@ -1,10 +1,24 @@
+const nodemailer = require("nodemailer");
 const User = require("../models/userModel");
 const crypto = require("crypto");
 const dotenv = require("dotenv");
 dotenv.config();
+const xlsx = require('xlsx');
+const fs = require('fs');
 // Generate a 32-byte secret key as a hex-encoded string
 const secretKeyHex = process.env.SECRET_KEY;
-console.log(secretKeyHex)
+console.log(secretKeyHex);
+
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: process.env.MY_MAIL,
+    pass: process.env.PASSWORD,
+  },
+});
+
 // Function to generate a random IV
 function generateRandomIV() {
   return crypto.randomBytes(16).toString("hex");
@@ -12,7 +26,11 @@ function generateRandomIV() {
 
 // Function to encrypt data
 function encryptData(data, iv) {
-  const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(secretKeyHex, 'hex'), Buffer.from(iv, "hex"));
+  const cipher = crypto.createCipheriv(
+    "aes-256-cbc",
+    Buffer.from(secretKeyHex, "hex"),
+    Buffer.from(iv, "hex")
+  );
 
   let encryptedData = cipher.update(data, "utf-8", "hex");
   encryptedData += cipher.final("hex");
@@ -23,7 +41,7 @@ function encryptData(data, iv) {
 function decryptData(encryptedData, iv) {
   const decipher = crypto.createDecipheriv(
     "aes-256-cbc",
-    Buffer.from(secretKeyHex, 'hex'),
+    Buffer.from(secretKeyHex, "hex"),
     Buffer.from(iv, "hex")
   );
 
@@ -32,8 +50,32 @@ function decryptData(encryptedData, iv) {
   return decryptedData;
 }
 
-
 // Create a new user
+// exports.createUser = async (req, res) => {
+//   const newUser = new User(req.body);
+
+//   // Generate IVs
+//   const emailIv = generateRandomIV();
+//   const passwordIv = generateRandomIV();
+//   const dobIv = generateRandomIV();
+
+//   // Encrypt sensitive fields before saving
+//   newUser.email = encryptData(newUser.email, emailIv);
+//   newUser.emailIv = emailIv;
+//   newUser.password = encryptData(newUser.password, passwordIv);
+//   newUser.passwordIv = passwordIv;
+//   newUser.dateOfBirth = encryptData(newUser.dateOfBirth, dobIv);
+//   newUser.dobIv = dobIv;
+
+//   try {
+//     const response = await newUser.save();
+//     console.log(response);
+//     res.status(201).json(response);
+//   } catch (error) {
+//     console.error(error);
+//     res.status(400).json(error);
+//   }
+// };
 exports.createUser = async (req, res) => {
   const newUser = new User(req.body);
 
@@ -51,15 +93,55 @@ exports.createUser = async (req, res) => {
   newUser.dobIv = dobIv;
 
   try {
-    const response = await newUser.save();
-    console.log(response);
-    res.status(201).json(response);
+    const savedUser = await newUser.save();
+
+    // Send a welcome email to the new user
+    const welcomeEmailHtml = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Welcome to ByteBridge</title>
+    </head>
+    <body>
+        <div style="text-align: center; background-color: #f5f5f5; padding: 20px;">
+            <h1>Welcome to ByteBridge</h1>
+        </div>
+        <div style="background-color: #ffffff; padding: 20px;">
+            <p>Hello ${savedUser.name},</p>
+            <p>Welcome to ByteBridge! We're excited to have you as a part of our community.</p>
+            <p>Here's what you can expect from ByteBridge:</p>
+            <ul>
+                <li>Access to a vibrant and supportive community of developers.</li>
+                <li>Resources and tutorials to help you on your coding journey.</li>
+                <li>Connect with like-minded individuals and expand your network.</li>
+            </ul>
+            <p>Feel free to explore our website and get started on your coding adventure today.</p>
+            <p>If you have any questions or need assistance, don't hesitate to contact us at [Support Email].</p>
+            <p>Once again, welcome to ByteBridge. We can't wait to see what you'll create!</p>
+            <p>Best regards,</p>
+            <p>The ByteBridge Team</p>
+        </div>
+    </body>
+    </html>
+  `;
+    const sendEmail = decryptData(savedUser.email, savedUser.emailIv);
+    console.log("Recipient Email:", savedUser.email); // Debug line to check the email address
+    const welcomeEmailInfo = await transporter.sendMail({
+      from: `"ByteBridge" ${process.env.MY_MAIL}`,
+      to: sendEmail, // Use the email address of the new user
+      subject: "Welcome to ByteBridge",
+      text: "Welcome to ByteBridge!",
+      html: welcomeEmailHtml,
+    });
+
+    console.log(welcomeEmailInfo);
+
+    res.status(201).json(savedUser);
   } catch (error) {
     console.error(error);
     res.status(400).json(error);
   }
 };
-
 // Retrieve a user by ID
 exports.getUserById = async (req, res) => {
   const { id } = req.params;
@@ -87,7 +169,6 @@ exports.getUserById = async (req, res) => {
   }
 };
 
-
 // Update a user by ID
 exports.updateUser = async (req, res) => {
   const { id } = req.params;
@@ -114,16 +195,19 @@ exports.updateUser = async (req, res) => {
     const user = await User.findByIdAndUpdate(id, updatedData, { new: true });
 
     // Decrypt sensitive fields before sending the response
-    user.email = decryptData(user.email, user.emailIv);
-    user.password = decryptData(user.password, user.passwordIv);
-    user.dateOfBirth = decryptData(user.dateOfBirth, user.dobIv);
-
-    res.status(200).json(user);
+    // user.email = decryptData(user.email, user.emailIv);
+    // user.password = decryptData(user.password, user.passwordIv);
+    // user.dateOfBirth = decryptData(user.dateOfBirth, user.dobIv);
+    const decryptedUser = {
+      email: decryptData(user.email, user.emailIv),
+      password: decryptData(user.password, user.passwordIv),
+      dateOfBirth: decryptData(user.dateOfBirth, user.dobIv),
+    };
+    res.status(200).json("Updated Succssfully");
   } catch (error) {
     res.status(400).json(error);
   }
 };
-
 
 // Delete a user by ID
 exports.deleteUser = async (req, res) => {
@@ -563,4 +647,100 @@ exports.getSocialLinks = async (req, res) => {
     console.error("Error getting social links:", error);
     res.status(500).json(error);
   }
+};
+
+// Add academic info to the user's profile
+exports.addAcademicInfo = async (req, res) => {
+  const { id } = req.params;
+  const { branch, roll, semester } = req.body;
+
+  try {
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    user.academicInfo = { branch, roll, semester };
+    await user.save();
+
+    res.status(200).json(user.academicInfo);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json(error);
+  }
+};
+
+// Update academic info in the user's profile
+exports.updateAcademicInfo = async (req, res) => {
+  const { id } = req.params;
+  const academicInfoUpdate = req.body;
+
+  try {
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (academicInfoUpdate.branch) {
+      user.academicInfo.branch = academicInfoUpdate.branch;
+    }
+    if (academicInfoUpdate.roll) {
+      user.academicInfo.roll = academicInfoUpdate.roll;
+    }
+    if (academicInfoUpdate.semester) {
+      user.academicInfo.semester = academicInfoUpdate.semester;
+    }
+
+    await user.save();
+
+    res.status(200).json(user.academicInfo);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json(error);
+  }
+};
+
+// Delete academic info from the user's profile
+exports.deleteAcademicInfo = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    user.academicInfo = null;
+    await user.save();
+
+    res.status(200).json({ message: "Academic info deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json(error);
+  }
+};
+
+// Create a Excel File
+exports.createExcel = (req, res) => {
+  const data = [
+    ["Name", "Age", "Email"],
+    ["John Doe", 30, "john@example.com"],
+    ["Jane Smith", 28, "jane@example.com"],
+  ];
+
+  const ws = xlsx.utils.aoa_to_sheet(data);
+  const wb = xlsx.utils.book_new();
+  xlsx.utils.book_append_sheet(wb, ws, "Sheet 1");
+  const excelBuffer = xlsx.write(wb, { bookType: "xlsx", type: "buffer" });
+
+  fs.writeFileSync("generated.xlsx", excelBuffer);
+
+  res.download("generated.xlsx", "data.xlsx", (err) => {
+    if (err) {
+      res.status(500).send("Error generating the Excel file.");
+    }
+  });
 };

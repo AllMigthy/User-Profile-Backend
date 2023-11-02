@@ -5,17 +5,22 @@ const userSchema = new mongoose.Schema({
     required: true,
   },
   email: {
-    type: String,//
+    type: String,
     required: true,
     unique: true,
   },
-  password: {//
+  password: {
     type: String,
     required: true,
   },
-  dateOfBirth:{//
+  dateOfBirth: {
     type: String,
     required: true,
+  },
+  academicInfo: {
+    branch: String,
+    roll: String,
+    semester: String,
   },
   profilePicture: String,
   projects: [
@@ -47,7 +52,7 @@ const userSchema = new mongoose.Schema({
       graduationYear: Number,
     },
   ],
-  socialLinks: [//
+  socialLinks: [
     {
       name: String,
       link: String,

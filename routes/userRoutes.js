@@ -19,7 +19,10 @@ const {
   addSocialLink,
   updateSocialLink,
   removeSocialLink,
-  getSocialLinks
+  getSocialLinks,
+  addAcademicInfo,
+  updateAcademicInfo,
+  deleteAcademicInfo
 } = require("../controllers/userController");
 const router = express.Router();
 
@@ -45,5 +48,8 @@ router
   .post("/:id/socialLinks", addSocialLink)
   .patch("/:id/socialLinks/:linkId", updateSocialLink)
   .delete("/:id/socialLinks/:linkId", removeSocialLink)
-  .get('/:id/socialLinks', getSocialLinks);
+  .get('/:id/socialLinks', getSocialLinks)
+  .post("/:id/academicInfo", addAcademicInfo)
+  .patch("/:id/academicInfo", updateAcademicInfo)
+  .delete("/:id/academicInfo", deleteAcademicInfo);
 exports.router = router;

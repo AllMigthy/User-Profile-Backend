@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const userRoutes = require("./routes/userRoutes");
+const excelRoute = require("./routes/excelRoutes");
 const app = express();
 const dotenv = require("dotenv");
 dotenv.config();
@@ -33,38 +34,52 @@ async function main() {
 app.use(express.json());
 
 app.use("/users", userRoutes.router);
+app.use('/',excelRoute.router)
+// app.post("/mail", async (req, res) => {
+//   const { to } = req.body;
 
-app.post("/mail", async (req, res) => {
-  const { to } = req.body;
+//   // HTML template for the welcome email
+//   const welcomeEmailHtml = `
+//     <!DOCTYPE html>
+//     <html>
+//     <head>
+//         <title>Welcome to ByteBridge</title>
+//     </head>
+//     <body>
+//         <div style="text-align: center; background-color: #f5f5f5; padding: 20px;">
+//             <h1>Welcome to ByteBridge</h1>
+//         </div>
+//         <div style="background-color: #ffffff; padding: 20px;">
+//             <p>Hello [User's Name],</p>
+//             <p>Welcome to ByteBridge! We're excited to have you as a part of our community.</p>
+//             <p>Here's what you can expect from ByteBridge:</p>
+//             <ul>
+//                 <li>Access to a vibrant and supportive community of developers.</li>
+//                 <li>Resources and tutorials to help you on your coding journey.</li>
+//                 <li>Connect with like-minded individuals and expand your network.</li>
+//             </ul>
+//             <p>Feel free to explore our website and get started on your coding adventure today.</p>
+//             <p>If you have any questions or need assistance, don't hesitate to contact us at [Support Email].</p>
+//             <p>Once again, welcome to ByteBridge. We can't wait to see what you'll create!</p>
+//             <p>Best regards,</p>
+//             <p>The ByteBridge Team</p>
+//         </div>
+//     </body>
+//     </html>
+//   `;
 
-  let info = await transporter.sendMail({
-    from: `ByteBridge" ${process.env.MY_MAIL}`,
-    to,
+//   // Send the email
+//   let info = await transporter.sendMail({
+//     from: `ByteBridge" ${process.env.MY_MAIL}`,
+//     to,
+//     subject: "Welcome To ByteBridge",
+//     text: "Hello world?",
+//     html: welcomeEmailHtml, // Use the HTML template here
+//   });
 
-    subject: "Welcome To ByteBridge 123",
-    text: "Hello world?",
-    html: `Getting Started with Create React App
-    This project was bootstrapped with Create React App.
-    
-    Available Scripts
-    In the project directory, you can run:
-    
-    npm start
-    Runs the app in the development mode.
-    Open http://localhost:3000 to view it in your browser.
-    
-    The page will reload when you make changes.
-    You may also see any lint errors in the console.
-    
-    npm test
-    Launches the test runner in the interactive watch mode.
-    See the section about running tests for more information.
-    
-    npm run build`,
-  });
+//   res.json(info);
+// });
 
-  res.json(info);
-});
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
